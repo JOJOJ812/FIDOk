@@ -367,7 +367,6 @@ data class ReaderResponse(
     }
 
     companion object {
-        @OptIn(ExperimentalStdlibApi::class)
         fun decode(
             cryptoProvider: CryptoProvider? = null,
             key: AESKey? = null,
@@ -510,7 +509,6 @@ class ACRCompatibleBLE {
                 )
         }
 
-        @OptIn(ExperimentalStdlibApi::class)
         @JvmStatic
         fun unwrapFrame(
             origFrame: UByteArray,
@@ -576,7 +574,6 @@ class ACRCompatibleBLE {
             return decryptedFrame
         }
 
-        @OptIn(ExperimentalStdlibApi::class)
         @JvmStatic
         fun packetizeMessage(
             command: ACRBLECommand,

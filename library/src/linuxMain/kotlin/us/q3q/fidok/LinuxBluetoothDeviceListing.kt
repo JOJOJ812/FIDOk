@@ -87,6 +87,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import us.q3q.fidok.ble.ACRBLEAuthenticatorDevice
+import us.q3q.fidok.ble.BLEAuthenticatorDevice
+import us.q3q.fidok.ble.BLECommunicationInterface
 import us.q3q.fidok.ble.FIDO_BLE_SERVICE_UUID
 import us.q3q.fidok.ble.reader.ACR_BLE_READER_SERVICE_UUID
 import us.q3q.fidok.ctap.AuthenticatorDevice
@@ -326,7 +329,7 @@ private fun onTimeout() {
 private data class BTDeviceInfo(val logicalDevice: AuthenticatorDevice, val address: String, val rawDevice: CPointer<Device>)
 
 @OptIn(ExperimentalForeignApi::class)
-class LinuxBluetoothDeviceListing {
+class LinuxBluetoothDeviceListing : BLECommunicationInterface {
     private var adapter: CPointer<Adapter>? = null
     private val connectionChannelsByAddress: MutableMap<String, Channel<Boolean>> = hashMapOf()
     private val writeChannelsByAddress: MutableMap<String, Channel<UByteArray?>> = hashMapOf()
@@ -364,9 +367,9 @@ class LinuxBluetoothDeviceListing {
     ) {
         val obj =
             if (isToken(device)) {
-                LinuxBluetoothDevice(address, name, this)
+                BLEAuthenticatorDevice(address, name, this)
             } else {
-                LinuxBluetoothReader(address, name, this)
+                ACRBLEAuthenticatorDevice(address, name, this, library = getLibrary())
             }
 
         runBlocking {
@@ -380,7 +383,7 @@ class LinuxBluetoothDeviceListing {
         }
     }
 
-    fun ref(): Boolean {
+    override fun ref(): Boolean {
         Logger.v { "Adding reference to BLE services" }
 
         if (refCt++ == 0) {
@@ -434,7 +437,7 @@ class LinuxBluetoothDeviceListing {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun startDiscovery(library: FIDOkLibrary): Job? {
+    override suspend fun startDiscovery(library: FIDOkLibrary): Job? {
         val usedAdapter = adapter
         if (usedAdapter == null || serviceUuids == null) {
             Logger.w { "Discovery failed to start due to missing BLE adapter" }
@@ -468,7 +471,7 @@ class LinuxBluetoothDeviceListing {
         return job
     }
 
-    suspend fun connect(address: String): Boolean {
+    override suspend fun connect(address: String): Boolean {
         Logger.i { "Opening connection to BLE device $address" }
 
         val device =
@@ -508,14 +511,14 @@ class LinuxBluetoothDeviceListing {
         return okay
     }
 
-    fun unref() {
+    override fun unref() {
         Logger.v { "Removing reference to BLE state" }
         if (--refCt == 0) {
             stop()
         }
     }
 
-    private fun stop() {
+    override fun stop() {
         Logger.v { "Stopping BLE services" }
 
         if (adapter != null) {
@@ -585,7 +588,7 @@ class LinuxBluetoothDeviceListing {
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun getDiscoveredDevices(): List<AuthenticatorDevice> {
+    override suspend fun getDiscoveredDevices(): List<AuthenticatorDevice> {
         val ret = arrayListOf<AuthenticatorDevice>()
         while (!registrationChannel.isEmpty) {
             val device = registrationChannel.receive()
@@ -643,7 +646,7 @@ class LinuxBluetoothDeviceListing {
         }
     }
 
-    fun setNotify(
+    override suspend fun setNotify(
         address: String,
         serviceUuid: String,
         characteristicUuid: String,
@@ -703,12 +706,12 @@ class LinuxBluetoothDeviceListing {
         }
     }
 
-    suspend fun write(
+    override suspend fun write(
         address: String,
         serviceUuid: String,
         characteristicUuid: String,
         data: UByteArray,
-        expectResponse: Boolean = false,
+        expectResponse: Boolean,
     ): UByteArray? {
         val device =
             binc_adapter_get_device_by_address(adapter, address)
@@ -747,7 +750,7 @@ class LinuxBluetoothDeviceListing {
         }
     }
 
-    suspend fun read(
+    override suspend fun read(
         address: String,
         serviceUuid: String,
         characteristicUuid: String,
@@ -925,7 +928,7 @@ class LinuxBluetoothDeviceListing {
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun isDiscovering(): Boolean {
+    fun isDiscovering(): Boolean {
         if (!registrationChannel.isEmpty) {
             return false
         }

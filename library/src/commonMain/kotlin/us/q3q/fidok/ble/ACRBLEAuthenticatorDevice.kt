@@ -1,4 +1,4 @@
-package us.q3q.fidok
+package us.q3q.fidok.ble
 
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.channels.Channel
@@ -18,21 +18,32 @@ import us.q3q.fidok.crypto.CryptoProvider
 import us.q3q.fidok.ctap.AuthenticatorDevice
 import us.q3q.fidok.ctap.AuthenticatorTransport
 import us.q3q.fidok.ctap.DeviceCommunicationException
+import us.q3q.fidok.ctap.FIDOkLibrary
 import us.q3q.fidok.pcsc.CTAPPCSC
 import kotlin.random.Random
 import kotlin.random.nextUBytes
 
-class LinuxBluetoothReader(
+/**
+ * Supports an [AuthenticatorDevice] connected to an ACR1255U BLE reader over Bluetooth Low Energy.
+ *
+ * @param address The BLE MAC address of the reader
+ * @param name The name of the reader
+ * @param comms Bluetooth manager stack for communicating with the reader
+ * @param library FIDOk library instance for cryptography
+ */
+@OptIn(ExperimentalUnsignedTypes::class)
+class ACRBLEAuthenticatorDevice(
     private val address: String,
     private val name: String,
-    private val listing: LinuxBluetoothDeviceListing,
+    private val comms: BLECommunicationInterface,
+    private val library: FIDOkLibrary,
 ) : AuthenticatorDevice {
     init {
-        listing.ref()
+        comms.ref()
     }
 
     protected fun finalize() {
-        listing.unref()
+        comms.unref()
     }
 
     private var connected: Boolean = false
@@ -57,7 +68,7 @@ class LinuxBluetoothReader(
 
         val send: (UByteArray) -> Unit = {
             runBlocking {
-                listing.write(
+                comms.write(
                     address,
                     ACR_BLE_READER_SERVICE_UUID,
                     ACR_BLE_READER_COMMAND_UUID,
@@ -73,21 +84,26 @@ class LinuxBluetoothReader(
             }
         }
 
-        val ok = listing.setNotify(address, ACR_BLE_READER_SERVICE_UUID, ACR_BLE_READER_RESPONSE_UUID, readResult)
+        val ok =
+            runBlocking {
+                comms.setNotify(address, ACR_BLE_READER_SERVICE_UUID, ACR_BLE_READER_RESPONSE_UUID, readResult)
+            }
         if (!ok) {
             throw DeviceCommunicationException("Failed to set up notifications for responses")
         }
         try {
             return block(send, recv)
         } finally {
-            listing.setNotify(address, ACR_BLE_READER_SERVICE_UUID, ACR_BLE_READER_RESPONSE_UUID, null)
+            runBlocking {
+                comms.setNotify(address, ACR_BLE_READER_SERVICE_UUID, ACR_BLE_READER_RESPONSE_UUID, null)
+            }
         }
     }
 
     private suspend fun connect(cryptoProvider: CryptoProvider) {
         if (!connected) {
             try {
-                connected = listing.connect(address)
+                connected = comms.connect(address)
             } catch (e: Exception) {
                 throw DeviceCommunicationException(e.message)
             }
@@ -151,7 +167,7 @@ class LinuxBluetoothReader(
     }
 
     override fun sendBytes(bytes: ByteArray): ByteArray {
-        val cryptoProvider = listing.getLibrary().cryptoProvider
+        val cryptoProvider = library.cryptoProvider
 
         runBlocking {
             connect(cryptoProvider)
