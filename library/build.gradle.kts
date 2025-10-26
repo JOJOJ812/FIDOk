@@ -4,7 +4,6 @@ import org.apache.tools.ant.taskdefs.condition.Os
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
-    java
     alias(libs.plugins.kotlinMultiplatform)
     kotlin("plugin.serialization")
     id("com.vanniktech.maven.publish") version "0.27.0"
@@ -33,7 +32,7 @@ fun bincTasks(platform: String) {
     buildDir.asFile.mkdirs()
     val output = buildDir.dir("binc").file("libBinc.a")
 
-    task<Exec>("configureBinc$platform") {
+    tasks.register<Exec>("configureBinc$platform") {
         workingDir(buildDir)
         commandLine("cmake", bincDir.asFile.absolutePath)
         environment("CFLAGS", "-fPIC")
@@ -42,7 +41,7 @@ fun bincTasks(platform: String) {
         inputs.files(fileTree(bincDir))
         outputs.files(buildDir.file("Makefile"))
     }
-    task<Exec>("buildBinc$platform") {
+    tasks.register<Exec>("buildBinc$platform") {
         workingDir(buildDir)
         commandLine("cmake", "--build", ".")
         dependsOn("configureBinc$platform")
@@ -68,14 +67,14 @@ fun hidAPITasks(
             else -> throw NotImplementedError("Platform $platform not handled in HIDAPI build")
         }
 
-    task<Exec>("configureHID$platform") {
+    tasks.register<Exec>("configureHID$platform") {
         workingDir(hidBuild)
-        commandLine(listOf("cmake", hidDir.asFile.absolutePath, "-DBUILD_SHARED_LIBS=FALSE") + cmakeExtraArgs)
+        commandLine(listOf("cmake", hidDir.asFile.absolutePath, "-DBUILD_SHARED_LIBS=FALSE", "-DCMAKE_C_STANDARD=17") + cmakeExtraArgs)
         inputs.property("platform", platform)
         inputs.files(fileTree(hidDir))
         outputs.files(hidBuild.file("Makefile"))
     }
-    task<Exec>("buildHID$platform") {
+    tasks.register<Exec>("buildHID$platform") {
         workingDir(hidBuild)
         commandLine("cmake", "--build", ".")
         dependsOn("configureHID$platform")
@@ -103,7 +102,7 @@ hidAPITasks(
 
 bincTasks("Linux")
 
-task<Exec>("buildEmbeddedAuthenticatorJar") {
+tasks.register<Exec>("buildEmbeddedAuthenticatorJar") {
     val appletDir = project.layout.projectDirectory.dir("submodules").dir("FIDO2Applet")
     val appletBuildDir = appletDir.dir("build")
     workingDir(appletDir)
@@ -123,7 +122,7 @@ fun botanTasks(
 ) {
     val buildDir = project.layout.buildDirectory.dir("botan-${platform.lowercase()}").get()
     buildDir.asFile.mkdirs()
-    task<Exec>("configureBotan$platform") {
+    tasks.register<Exec>("configureBotan$platform") {
         workingDir(botanDir)
         val args = commonBotan(buildDir.asFile.absolutePath)
         commandLine(args + extraArgs)
@@ -131,7 +130,7 @@ fun botanTasks(
         inputs.files(botanDir.file("configure.py"))
         outputs.files(buildDir.file("Makefile"))
     }
-    task<Exec>("buildBotan$platform") {
+    tasks.register<Exec>("buildBotan$platform") {
         dependsOn("configureBotan$platform")
         workingDir(botanDir)
         commandLine("make", "-j4", "-f", "${buildDir.asFile.absolutePath}/Makefile")
@@ -178,24 +177,26 @@ fun nativeBuild(
     val botanBuild = tasks.getByName("buildBotan$platform")
     val lcPlatform = platform.lowercase()
     val hidFile = hidBuild.outputs.files.singleFile
-    val hidLibName = hidFile.name.replace(Regex("^lib"), "").replace(Regex("\\..*$"), "")
+    val hidLibName = hidFile.name
 
     val linkerOpts =
         arrayListOf(
             "-L${hidFile.parent}",
-            "-l$hidLibName",
+            "-l:$hidLibName",
         )
     when (platform) {
         "Linux" -> {
             val bincBuild = tasks.getByName("buildBinc$platform")
             val bincFile = bincBuild.outputs.files.singleFile
-            linkerOpts.add("-l${submodulesDir.dir("pcsc").file("libpcsclite.so.1.0.0").asFile.absolutePath}")
-            linkerOpts.add("-l/usr/lib/libudev.so")
+            linkerOpts.add("-L${submodulesDir.dir("pcsc")}")
+            linkerOpts.add("-l:libpcsclite.so.1.0.0")
             linkerOpts.add("-L${bincFile.parent}")
             linkerOpts.add("-lBinc")
-            linkerOpts.add("-l/usr/lib/libglib-2.0.so")
-            linkerOpts.add("-l/usr/lib/libgio-2.0.so")
-            linkerOpts.add("-l/usr/lib/libgobject-2.0.so")
+            linkerOpts.add("-L/usr/lib")
+            linkerOpts.add("-l:libudev.so")
+            linkerOpts.add("-l:libglib-2.0.so")
+            linkerOpts.add("-l:libgio-2.0.so")
+            linkerOpts.add("-l:libgobject-2.0.so")
         }
         "Windows" -> {
             linkerOpts.add("-lwinscard")
@@ -216,12 +217,19 @@ fun nativeBuild(
 
     // Botan links against libstdc++ and uses newer glibc constructs. Let it do that, and sort it out at load time.
     val botanLinkerOptsForShared =
-        arrayListOf(
-            "--allow-shlib-undefined",
-            botanBuild.outputs.files.first().path,
-            "-lstdc++",
-            "--no-allow-shlib-undefined",
-        )
+        if (platform == "Windows") {
+            arrayListOf(
+                botanBuild.outputs.files.first().path,
+                "/usr/x86_64-w64-mingw32/lib/libstdc++.a",
+            )
+        } else {
+            arrayListOf(
+                "--allow-shlib-undefined",
+                botanBuild.outputs.files.first().path,
+                "-lstdc++",
+                "--no-allow-shlib-undefined",
+            )
+        }
     // ... but for an executable, we need to resolve those symbols NOW, so use the dynamic botan instead of static
     val botanLinkerOptsForExecutable =
         if (platform == "Windows") {
@@ -236,7 +244,7 @@ fun nativeBuild(
             )
         }
 
-    val linkerOptsShared = linkerOpts + if (platform == "Windows") botanLinkerOptsForExecutable else botanLinkerOptsForShared
+    val linkerOptsShared = linkerOpts + botanLinkerOptsForShared
     val linkerOptsExecutable = linkerOpts + botanLinkerOptsForExecutable
 
     target.apply {
@@ -290,9 +298,8 @@ fun nativeBuild(
 
 kotlin {
     applyDefaultHierarchyTemplate()
-    jvmToolchain(11)
+    jvmToolchain(17)
     jvm {
-        withJava()
         testRuns.named("test") {
             executionTask.configure {
                 useJUnitPlatform()
@@ -354,7 +361,8 @@ kotlin {
             }
         } else {
             nativeBuild(linuxX64("linux"), "Linux")
-            nativeBuild(mingwX64("windows"), "Windows")
+            // Windows builds broken by mingw shenanigans
+            // nativeBuild(mingwX64("windows"), "Windows")
         }
     }
 }
@@ -403,8 +411,8 @@ if (!project.hasProperty("jvmOnly")) {
     } else {
         tasks.getByName("compileKotlinLinux").dependsOn("buildBotanLinux", "buildHIDLinux", "buildBincLinux")
         tasks.getByName("cinteropBotanLinux").dependsOn("buildBotanLinux")
-        tasks.getByName("compileKotlinWindows").dependsOn("buildBotanWindows", "buildHIDWindows")
-        tasks.getByName("cinteropBotanWindows").dependsOn("buildBotanWindows")
+        /*tasks.getByName("compileKotlinWindows").dependsOn("buildBotanWindows", "buildHIDWindows")
+        tasks.getByName("cinteropBotanWindows").dependsOn("buildBotanWindows")*/
     }
 }
 

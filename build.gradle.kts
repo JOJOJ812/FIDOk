@@ -5,7 +5,7 @@ plugins {
     kotlin("plugin.serialization") version libs.versions.kotlin apply false
     alias(libs.plugins.jetbrainsCompose) apply false
     alias(libs.plugins.compose.compiler) apply false
-    id("com.android.application") version "8.2.2" apply false
+    alias(libs.plugins.androidGradlePlugin) apply false
     // Commented out until it stops throwing parse errors
     // id("org.jlleitschuh.gradle.ktlint") version "11.6.1"
 }

@@ -13,7 +13,7 @@ dependencies {
 
 android {
     namespace = "us.q3q.fidok.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "us.q3q.fidok"
@@ -36,11 +36,16 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "1.8"
+    kotlin {
+        target {
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+        }
     }
     buildFeatures {
         compose = true
@@ -53,7 +58,7 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-    buildToolsVersion = "34.0.0"
+    buildToolsVersion = "36.0.0"
 }
 
 dependencies {

@@ -1,6 +1,7 @@
 package us.q3q.fidok.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.requireObject
 import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.option
@@ -12,7 +13,7 @@ import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 @OptIn(ExperimentalEncodingApi::class, ExperimentalStdlibApi::class)
-class Encrypt : CliktCommand(help = "Symmetrically encrypt data using the hmac-secret extension") {
+class Encrypt : CliktCommand() {
     private val ezhmac by requireObject<EZHmac>()
 
     val setup by option("--setup")
@@ -41,6 +42,8 @@ class Encrypt : CliktCommand(help = "Symmetrically encrypt data using the hmac-s
                 fail("Salt must be exactly 32 bytes (64 hexadecimal characters) long")
             }
         }
+
+    override fun help(context: Context) = "Symmetrically encrypt data using the hmac-secret extension"
 
     override fun run() {
         runBlocking {

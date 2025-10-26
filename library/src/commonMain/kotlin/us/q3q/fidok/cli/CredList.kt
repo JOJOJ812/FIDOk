@@ -1,6 +1,7 @@
 package us.q3q.fidok.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.requireObject
 import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.option
@@ -13,11 +14,13 @@ import us.q3q.fidok.ctap.PinUVToken
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
-class CredList : CliktCommand(name = "list", help = "List discoverable credentials") {
+class CredList : CliktCommand(name = "list") {
     val client by requireObject<CTAPClient>()
 
     val rpId by option("--rp")
         .help("Identifier or hash (hex encoded) of the RP of interest")
+
+    override fun help(context: Context) = "List discoverable credentials"
 
     @OptIn(ExperimentalStdlibApi::class, ExperimentalEncodingApi::class)
     override fun run() {

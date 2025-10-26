@@ -1,6 +1,7 @@
 package us.q3q.fidok.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.requireObject
 import com.github.ajalt.clikt.parameters.options.defaultLazy
 import com.github.ajalt.clikt.parameters.options.flag
@@ -22,7 +23,7 @@ import us.q3q.fidok.webauthn.ResidentKeyRequirement
 import kotlin.random.Random
 
 @OptIn(ExperimentalStdlibApi::class)
-class Create : CliktCommand(help = "Create a new webauthn credential") {
+class Create : CliktCommand() {
     private val library by requireObject<FIDOkLibrary>()
 
     private val rpId by option("--rp")
@@ -74,6 +75,8 @@ class Create : CliktCommand(help = "Create a new webauthn credential") {
     private val credProtectLevel by option("--protect")
         .choice("1", "2", "3")
         .help("CTAP credProtect level - 2 for UV-unless-cred-provided, 3 for always-UV")
+
+    override fun help(context: Context) = "Create a new webauthn credential"
 
     override fun run() {
         val selectionCriteria =

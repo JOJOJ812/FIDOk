@@ -2,11 +2,13 @@ package us.q3q.fidok.cli
 
 import com.github.ajalt.clikt.core.Abort
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
+import com.github.ajalt.clikt.core.obj
 import com.github.ajalt.clikt.core.requireObject
 import com.github.ajalt.clikt.core.subcommands
 import us.q3q.fidok.ctap.FIDOkLibrary
 
-class Cfg : CliktCommand("Manage Authenticator settings") {
+class Cfg : CliktCommand() {
     init {
         subcommands(EnableEnterpriseAttestation(), ToggleAlwaysUV())
     }
@@ -18,6 +20,8 @@ class Cfg : CliktCommand("Manage Authenticator settings") {
     }
 
     private val library by requireObject<FIDOkLibrary>()
+
+    override fun help(context: Context) = "Manage Authenticator settings"
 
     override fun run() {
         val client = getSuitableClient(library)

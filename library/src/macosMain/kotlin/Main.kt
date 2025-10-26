@@ -1,3 +1,4 @@
+import com.github.ajalt.clikt.core.main
 import us.q3q.fidok.BotanCryptoProvider
 import us.q3q.fidok.LibHIDDevice
 import us.q3q.fidok.MacPCSCLiteDevice

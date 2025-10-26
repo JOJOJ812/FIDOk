@@ -1,6 +1,8 @@
 package us.q3q.fidok.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
+import com.github.ajalt.clikt.core.obj
 import com.github.ajalt.clikt.core.requireObject
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.options.help
@@ -8,7 +10,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import us.q3q.fidok.ctap.FIDOkLibrary
 import us.q3q.fidok.ez.EZHmac
 
-class HMAC : CliktCommand("Easily encrypt/decrypt data using FIDO Authenticators via hmac-secret") {
+class HMAC : CliktCommand() {
     init {
         subcommands(Setup(), Encrypt(), Decrypt())
     }
@@ -17,6 +19,8 @@ class HMAC : CliktCommand("Easily encrypt/decrypt data using FIDO Authenticators
         .help("Relying Party ID to use")
 
     val library by requireObject<FIDOkLibrary>()
+
+    override fun help(context: Context) = "Easily encrypt/decrypt data using FIDO Authenticators via hmac-secret"
 
     override fun run() {
         val gottenRpId = rpId

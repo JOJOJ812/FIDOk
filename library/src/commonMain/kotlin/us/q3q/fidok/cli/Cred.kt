@@ -2,13 +2,15 @@ package us.q3q.fidok.cli
 
 import com.github.ajalt.clikt.core.Abort
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.UsageError
+import com.github.ajalt.clikt.core.obj
 import com.github.ajalt.clikt.core.requireObject
 import com.github.ajalt.clikt.core.subcommands
 import us.q3q.fidok.ctap.CTAPOption
 import us.q3q.fidok.ctap.FIDOkLibrary
 
-class Cred : CliktCommand("Manage discoverable credentials") {
+class Cred : CliktCommand() {
     init {
         subcommands(CredList(), Delete(), UpdateUser())
     }
@@ -20,6 +22,8 @@ class Cred : CliktCommand("Manage discoverable credentials") {
     }
 
     private val library by requireObject<FIDOkLibrary>()
+
+    override fun help(context: Context) = "Manage discoverable credentials"
 
     override fun run() {
         val client = getSuitableClient(library)

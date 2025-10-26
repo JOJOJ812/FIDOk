@@ -18,9 +18,7 @@ repositories {
 kotlin {
     // androidTarget()
     jvmToolchain(11)
-    jvm("desktop") {
-        withJava()
-    }
+    jvm("desktop")
     sourceSets {
         val commonMain by getting {
             dependencies {

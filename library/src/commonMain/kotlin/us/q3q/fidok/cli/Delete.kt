@@ -1,6 +1,7 @@
 package us.q3q.fidok.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.requireObject
 import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.option
@@ -13,7 +14,7 @@ import us.q3q.fidok.ctap.commands.PublicKeyCredentialDescriptor
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
-class Delete : CliktCommand(help = "Remove a stored discoverable credential") {
+class Delete : CliktCommand() {
     val client by requireObject<CTAPClient>()
 
     val rpId by option("--rp")
@@ -27,6 +28,8 @@ class Delete : CliktCommand(help = "Remove a stored discoverable credential") {
                 fail("Must not be empty")
             }
         }
+
+    override fun help(context: Context) = "Remove a stored discoverable credential"
 
     @OptIn(ExperimentalEncodingApi::class)
     override fun run() {

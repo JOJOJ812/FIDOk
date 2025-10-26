@@ -1,27 +1,28 @@
 [versions]
-activity-compose = "1.9.3"
-activity-ktx = "1.9.3"
-androidx-junit = "1.2.1"
-appcompat = "1.7.0"
+activity-compose = "1.11.0"
+activity-ktx = "1.11.0"
+androidx-junit = "1.3.0"
+android-gradle-plugin = "8.12.3"
+appcompat = "1.7.1"
 blessed = "0.61"
-clikt = "4.2.2"
-compose = "1.7.0-rc01"
-compose-webview-multiplatform = "1.9.40"
+clikt = "5.0.3"
+compose = "1.9.1"
+compose-webview-multiplatform = "2.0.3"
 composecompiler = "1.5.8"
-composeandroid = "1.7.6"
+composeandroid = "1.9.4"
 composebom = "2023.03.00"
-core-ktx = "1.15.0"
-coroutines = "1.8.0"
-espresso-core = "3.6.1"
-fragment-ktx = "1.8.5"
-jnr = "2.2.15"
+core-ktx = "1.17.0"
+coroutines = "1.10.2"
+espresso-core = "3.7.0"
+fragment-ktx = "1.8.9"
+jnr = "2.2.18"
 junit = "4.13.2"
 kcef = "2024.04.20.4"
-kermit = "2.0.2"
-kotlin = "2.0.20"
-lifecycle-runtime-ktx = "2.8.7"
+kermit = "2.0.8"
+kotlin = "2.2.21"
+lifecycle-runtime-ktx = "2.9.4"
 qrcode-kotlin = "3.3.0"
-serialization = "1.7.2"
+serialization = "1.9.0"
 
 [libraries]
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
@@ -59,3 +60,4 @@ compose = ["compose", "compose-graphics", "compose-preview"]
 jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "compose" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+androidGradlePlugin = { id = "com.android.application", version.ref = "android-gradle-plugin" }

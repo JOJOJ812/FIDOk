@@ -1,6 +1,7 @@
 package us.q3q.fidok.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.requireObject
 import com.github.ajalt.clikt.parameters.options.help
@@ -17,7 +18,7 @@ import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 @OptIn(ExperimentalStdlibApi::class)
-class UpdateUser : CliktCommand(help = "Change the user ID associated with a stored credential") {
+class UpdateUser : CliktCommand() {
     val client by requireObject<CTAPClient>()
 
     val library by requireObject<FIDOkLibrary>()
@@ -51,6 +52,8 @@ class UpdateUser : CliktCommand(help = "Change the user ID associated with a sto
 
     private val userDisplayName by option("--user-display-name")
         .help("New even MORE human readable name of user")
+
+    override fun help(context: Context) = "Change the user ID associated with a stored credential"
 
     @OptIn(ExperimentalEncodingApi::class)
     override fun run() {

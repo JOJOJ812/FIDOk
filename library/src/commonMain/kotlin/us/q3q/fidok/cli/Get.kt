@@ -1,6 +1,7 @@
 package us.q3q.fidok.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.requireObject
 import com.github.ajalt.clikt.parameters.options.defaultLazy
 import com.github.ajalt.clikt.parameters.options.help
@@ -19,7 +20,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
 
 @OptIn(ExperimentalEncodingApi::class, ExperimentalStdlibApi::class)
-class Get : CliktCommand(help = "Get (use) an existing webauthn credential") {
+class Get : CliktCommand() {
     private val library by requireObject<FIDOkLibrary>()
 
     private val rpId by option("--rp")
@@ -59,6 +60,8 @@ class Get : CliktCommand(help = "Get (use) an existing webauthn credential") {
                 checkHex(salt)
             }
         }
+
+    override fun help(context: Context) = "Get (use) an existing webauthn credential"
 
     @OptIn(ExperimentalStdlibApi::class)
     override fun run() {

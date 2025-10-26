@@ -1,18 +1,21 @@
 package us.q3q.fidok.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.requireObject
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.option
 import us.q3q.fidok.ctap.FIDOkLibrary
 
-class Reset : CliktCommand(help = "PERMANENTLY reset an Authenticator, restoring it to fresh") {
+class Reset : CliktCommand() {
     private val library by requireObject<FIDOkLibrary>()
 
     private val confirmation by option("--yes")
         .flag()
         .help("Actually, permanently reset the Authenticator without confirmation")
+
+    override fun help(context: Context) = "PERMANENTLY reset an Authenticator, restoring it to fresh"
 
     override fun run() {
         val client = getSuitableClient(library) ?: return

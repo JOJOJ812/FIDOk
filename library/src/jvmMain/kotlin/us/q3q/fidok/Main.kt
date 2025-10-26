@@ -1,5 +1,6 @@
 package us.q3q.fidok
 
+import com.github.ajalt.clikt.core.main
 import us.q3q.fidok.cli.DefaultCliCallbacks
 import us.q3q.fidok.cli.Main
 import us.q3q.fidok.ctap.FIDOkLibrary
