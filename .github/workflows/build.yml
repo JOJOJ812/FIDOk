@@ -1,87 +1,48 @@
-name: Build APK
+name: Build FIDOk Android APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ "main" ]
   workflow_dispatch:
 
-concurrency:
-  group: build-apk-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  build:
+  build-apk:
     runs-on: ubuntu-latest
-    env:
-      GRADLE_USER_HOME: ${{ runner.temp }}/.gradle-cache
+    timeout-minutes: 15
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Java (17)
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
           java-version: '17'
+          distribution: 'temurin'
 
-      - name: Cache Gradle
-        uses: actions/cache@v4
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            ${{ env.GRADLE_USER_HOME }}
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/gradle-wrapper.properties', '**/*.gradle*') }}-jdk11
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+          sdk-components: |
+            platforms;android-34
+            build-tools;34.0.0
 
-      - name: Ensure Android SDK components are installed
-        env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build debug APK
+        run: ./gradlew :android-app:assembleDebug --no-daemon --stacktrace
+
+      - name: Find and list all APKs
         run: |
-          # On GitHub runners sdkmanager is usually available.
-          # Install cmdline-tools if needed and required platforms/build-tools.
-          yes | sdkmanager --licenses || true
-          sdkmanager "cmdline-tools;latest" || true
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" || true
-        # If your project requires different API level or build-tools, adjust above.
+          echo "🔍 APK files generated:"
+          find . -name "*.apk" -type f
 
-      - name: Print Java & Gradle info
-        run: |
-          java -version
-          ./gradlew --version
-
-      - name: Build debug APK(s)
-        run: |
-          # Use the repository Gradle wrapper to build all subprojects.
-          chmod +x ./gradlew
-          ./gradlew clean assembleDebug --no-daemon -Porg.gradle.jvmargs="-Xmx2g"
-        env:
-          JAVA_TOOL_OPTIONS: "-Xmx2g"
-
-      - name: Collect APKs
-        id: collect-apks
-        run: |
-          # Find APKs produced by Android Gradle Plugin
-          mkdir -p build-apks
-          shopt -s globstar || true
-          found=false
-          for f in **/build/outputs/**/*.apk; do
-            if [ -f "$f" ]; then
-              cp --parents "$f" build-apks/ || cp "$f" build-apks/ 2>/dev/null || true
-              found=true
-            fi
-          done
-          if [ "$found" = "false" ]; then
-            echo "No APKs found in build/outputs."
-            ls -R || true
-          fi
-
-      - name: Upload APK artifacts
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: apks
-          path: build-apks/
+          name: fidok-debug-apk
+          path: "**/debug/*.apk"
+          if-no-files-found: error
