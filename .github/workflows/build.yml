@@ -5,15 +5,12 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      ANDROID_HOME: /usr/local/lib/android/sdk
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
     steps:
       - name: Checkout code
@@ -25,31 +22,35 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install Android SDK command-line tools
-        run: |
-          mkdir -p $ANDROID_HOME/cmdline-tools
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q commandlinetools-linux-*.zip -d $ANDROID_HOME/cmdline-tools
-          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-
-      - name: Accept Android SDK licenses
-        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null 2>&1 || true
-
-      - name: Install required Android SDK components
-        run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          sdk-components: |
+            platforms;android-34
+            build-tools;34.0.0
+            platform-tools
 
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
+
+      - name: Validate Android project configuration
+        run: |
+          echo "🔍 Checking android-app/build.gradle.kts for namespace..."
+          if ! grep -q "namespace\s*=" android-app/build.gradle.kts; then
+            echo "❌ ERROR: Missing 'namespace' in android-app/build.gradle.kts!"
+            echo "AGP 8.0+ requires explicit namespace declaration."
+            exit 1
+          fi
 
       - name: Build debug APK
         env:
           GRADLE_OPTS: "-Xmx4g -Dfile.encoding=UTF-8"
         run: ./gradlew :android-app:assembleDebug --no-daemon --console=plain --warning-mode=summary --stacktrace
 
-      - name: Find and list generated APKs
+      - name: List generated APKs
         run: |
-          echo "🔍 Generated APK files:"
-          find . -path "*/android-app/build/outputs/**/*.apk" -type f
+          echo "✅ APK files generated:"
+          find android-app/build/outputs -name "*.apk" -type f
 
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
