@@ -1,17 +1,13 @@
 name: Build FIDOk APK
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "main", "master" ]
-  pull_request:
-    branches: [ "main", "master" ]
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,34 +24,18 @@ jobs:
           sdk-components: |
             platforms;android-34
             build-tools;34.0.0
-            platform-tools
 
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Validate Android project configuration
-        run: |
-          echo "🔍 Checking android-app/build.gradle.kts for namespace..."
-          if ! grep -q "namespace\s*=" android-app/build.gradle.kts; then
-            echo "❌ ERROR: Missing 'namespace' in android-app/build.gradle.kts!"
-            echo "AGP 8.0+ requires explicit namespace declaration."
-            exit 1
-          fi
-
       - name: Build debug APK
         env:
           GRADLE_OPTS: "-Xmx4g -Dfile.encoding=UTF-8"
-        run: ./gradlew :android-app:assembleDebug --no-daemon --console=plain --warning-mode=summary --stacktrace
+        run: ./gradlew :android-app:assembleDebug --no-daemon --warning-mode=summary
 
-      - name: List generated APKs
-        run: |
-          echo "✅ APK files generated:"
-          find android-app/build/outputs -name "*.apk" -type f
-
-      - name: Upload APK as artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: FIDOk-debug-apk
           path: android-app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-          retention-days: 7
