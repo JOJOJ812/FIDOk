@@ -1,13 +1,19 @@
 name: Build FIDOk APK
 
 on:
-  workflow_dispatch:
   push:
     branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:  # 允许手动触发构建
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -18,24 +24,27 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          sdk-components: |
-            platforms;android-34
-            build-tools;34.0.0
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
-
+      - name: Install Android SDK command-line tools
+        run: |
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q commandlinetools-linux-*.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+      - name: Accept Android SDK licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+      - name: Install required Android SDK components
+        run: |
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
+            "platform-tools" \
       - name: Build debug APK
-        env:
-          GRADLE_OPTS: "-Xmx4g -Dfile.encoding=UTF-8"
-        run: ./gradlew :android-app:assembleDebug --no-daemon --warning-mode=summary
+        run: ./gradlew assembleDebug --no-daemon --console=plain
 
-      - name: Upload APK
+      - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
           name: FIDOk-debug-apk
-          path: android-app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+          path: */app-debug.apk
+          retention-days: 7
