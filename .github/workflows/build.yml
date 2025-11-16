@@ -20,8 +20,18 @@ jobs:
 
       - name: Debug project structure
         run: |
+          echo "=== Directory listing ==="
           ls -la
-          cat settings.gradle
+          echo ""
+          if [ -f settings.gradle ]; then
+            echo "=== settings.gradle ==="
+            cat settings.gradle
+          elif [ -f settings.gradle.kts ]; then
+            echo "=== settings.gradle.kts ==="
+            cat settings.gradle.kts
+          else
+            echo "⚠️ No settings.gradle or settings.gradle.kts found!"
+          fi
 
       - name: Set up JDK 17
         uses: actions/setup-java@v3
@@ -30,10 +40,10 @@ jobs:
           distribution: temurin
 
       - name: Install Android SDK
-        run: >
-          mkdir -p $ANDROID_HOME/cmdline-tools &&
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip &&
-          unzip -q commandlinetools-linux-*.zip -d $ANDROID_HOME/cmdline-tools &&
+        run: |
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q commandlinetools-linux-*.zip -d $ANDROID_HOME/cmdline-tools
           mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
 
       - name: Accept licenses
@@ -56,9 +66,18 @@ jobs:
           GRADLE_OPTS: "-Xmx4g -Dfile.encoding=UTF-8"
         run: ./gradlew :android-app:assembleDebug --no-daemon --info --stacktrace -Dandroid.home=$ANDROID_HOME
 
+      - name: Check and list generated APKs
+        run: |
+          echo "🔍 Searching for APK files..."
+          find . -name "*.apk" -type f
+          if ! find . -name "*.apk" -type f | grep -q .; then
+            echo "❌ ERROR: No APK files were generated! Build likely failed."
+            exit 1
+          fi
+
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
           name: FIDOk-debug-apk
-          path: android-app/build/outputs/apk/**/*.apk
+          path: "**/*.apk"
           retention-days: 7
