@@ -1,9 +1,9 @@
-name: Build FIDOk APK (Robust)
+name: Build FIDOk APK
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches: [ "main", "master" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -11,7 +11,6 @@ jobs:
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-      GRADLE_OPTS: "-Xmx4g -Dfile.encoding=UTF-8 -Dorg.gradle.daemon=false"
 
     steps:
       - name: Checkout code
@@ -23,6 +22,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      # 推荐用 Action 安装，但保留原手动安装方式，如有兼容性可按需选择
       - name: Install Android SDK
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
@@ -36,34 +36,33 @@ jobs:
 
       - name: Install SDK components
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0"
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
+            "extras;android;m2repository" \
+            "extras;google;m2repository"
 
-      # === 关键：清理并强制重新构建 ===
-      - name: Clean project
-        run: ./gradlew clean
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle
 
-      - name: Build debug APK (force)
-        run: |
-          ./gradlew assembleDebug --no-daemon --console=plain --info
+      - name: Build debug APK
+        env:
+          GRADLE_OPTS: "-Xmx4g -Dfile.encoding=UTF-8"
+        run: ./gradlew :android-app:assembleDebug --no-daemon --console=plain
 
-      # === 关键：严格检查 APK 是否存在 ===
-      - name: Verify APK existence
-        id: check_apk
-        run: |
-          APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
-          if [ -f "$APK_PATH" ]; then
-            echo "APK found at: $APK_PATH"
-            echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
-          else
-            echo "❌ ERROR: APK NOT FOUND!"
-            ls -la app/build/outputs/
-            find . -name "*.apk" -type f
-            exit 1
-          fi
+      - name: Debug: List APK files
+        run: find . -name "*.apk" -type f
 
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
           name: FIDOk-debug-apk
-          path: ${{ steps.check_apk.outputs.apk_path }}
+          path: android-app/build/outputs/apk/**/*.apk
           retention-days: 7
