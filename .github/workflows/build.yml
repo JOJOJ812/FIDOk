@@ -1,49 +1,60 @@
-name: Build FIDOk Android APK
+name: Build FIDOk APK
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: [ "main" ]
-  workflow_dispatch:
+    branches: [ "main", "master" ]
+  workflow_dispatch:  # 允许手动触发
 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          sdk-components: |
-            platforms;android-34
-            build-tools;34.0.0
+      - name: Install Android SDK command-line tools
+        run: |
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q commandlinetools-linux-*.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+
+      - name: Accept Android SDK licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null 2>&1 || true
+
+      - name: Install required Android SDK components
+        run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
+
       - name: Build debug APK
         env:
           GRADLE_OPTS: "-Xmx4g -Dfile.encoding=UTF-8"
-        run: ./gradlew :android-app:assembleDebug --no-daemon --stacktrace --warning-mode=summary
-        
-      - name: Find and list all APKs
-        run: |
-          echo "🔍 APK files generated:"
-          find . -name "*.apk" -type f
+        run: ./gradlew :android-app:assembleDebug --no-daemon --console=plain --warning-mode=summary --stacktrace
 
-      - name: Upload debug APK
+      - name: Find and list generated APKs
+        run: |
+          echo "🔍 Generated APK files:"
+          find . -path "*/android-app/build/outputs/**/*.apk" -type f
+
+      - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: fidok-debug-apk
-          path: "**/debug/*.apk"
+          name: FIDOk-debug-apk
+          path: android-app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 7
