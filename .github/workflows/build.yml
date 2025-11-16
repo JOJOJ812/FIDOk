@@ -22,7 +22,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # 推荐用 Action 安装，但保留原手动安装方式，如有兼容性可按需选择
       - name: Install Android SDK
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
@@ -49,8 +48,7 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle
+          restore-keys: ${{ runner.os }}-gradle
 
       - name: Build debug APK
         env:
