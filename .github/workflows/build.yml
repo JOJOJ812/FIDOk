@@ -1,4 +1,4 @@
-name: FIDOk Android CI (Dynamic Module Detection)
+name: FIDOk Android CI (Debug with Auto Upload)
 
 on:
   push:
@@ -44,7 +44,7 @@ jobs:
           key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-
 
-      # 5️⃣ Kotlin/Native 缓存（可选）
+      # 5️⃣ Kotlin/Native 缓存
       - name: Cache Kotlin/Native
         uses: actions/cache@v3
         with:
@@ -58,28 +58,46 @@ jobs:
         run: |
           echo "Available Gradle modules:"
           ./gradlew projects --console=plain
-          # 提取模块名，以冒号开头
           modules=$(./gradlew projects --console=plain | grep "^:" | awk '{print $1}' | tr '\n' ' ')
           echo "Modules detected: $modules"
           echo "::set-output name=modules::$modules"
 
-      # 7️⃣ 构建 Android App APK（如果存在 android-app 模块）
+      # 7️⃣ 构建 Android App Debug APK
       - name: Build Android App Debug APK
         if: contains(steps.detect_modules.outputs.modules, ':android-app')
         run: ./gradlew :android-app:assembleDebug --stacktrace --no-daemon
 
-      # 8️⃣ 构建 Android Library AAR（如果存在 android-library 模块）
+      # 8️⃣ 构建 Android Library Debug AAR
       - name: Build Android Library Debug AAR
         if: contains(steps.detect_modules.outputs.modules, ':android-library')
         run: ./gradlew :android-library:assembleDebug --stacktrace --no-daemon
 
-      # 9️⃣ 上传构建产物
-      - name: Upload APK/AAR artifacts
+      # 9️⃣ 自动查找 APK/AAR 并上传
+      - name: Find and upload APK/AAR artifacts
+        run: |
+          echo "Searching for APK and AAR files..."
+          apk_files=$(find android-app/build/outputs/apk/ -name "*.apk")
+          aar_files=$(find android-library/build/outputs/aar/ -name "*.aar")
+          echo "Found APKs:"
+          echo "$apk_files"
+          echo "Found AARs:"
+          echo "$aar_files"
+
+          if [ -z "$apk_files" ] && [ -z "$aar_files" ]; then
+            echo "No APK or AAR files found. Exiting."
+            exit 1
+          fi
+
+          mkdir -p artifacts
+          for f in $apk_files $aar_files; do
+            cp "$f" artifacts/
+          done
+        shell: bash
+
+      - name: Upload all APK/AAR artifacts
         uses: actions/upload-artifact@v4
         with:
           name: FIDOk-Android-Debug
-          path: |
-            android-app/build/outputs/apk/debug/*.apk
-            android-library/build/outputs/aar/*.aar
+          path: artifacts/
           retention-days: 7
           compression-level: 3
