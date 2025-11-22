@@ -1,4 +1,4 @@
-name: Build FIDOk Android
+name: Build FIDOk Android Debug
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
       JAVA_HOME: /opt/hostedtoolcache/jdk/17.0.8/x64
 
     steps:
-      # 1️⃣ 拉取代码
+      # 1️⃣ Checkout 代码
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -25,7 +25,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # 3️⃣ 安装 Android SDK / NDK
+      # 3️⃣ 安装 Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
@@ -44,7 +44,7 @@ jobs:
           key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-
 
-      # 5️⃣ Kotlin/Native 缓存（可选加速）
+      # 5️⃣ Kotlin/Native 缓存（可选）
       - name: Cache Kotlin/Native
         uses: actions/cache@v3
         with:
@@ -52,19 +52,19 @@ jobs:
           key: konan-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: konan-
 
-      # 6️⃣ 构建 Android App（APK）
-      - name: Build Android App APK
+      # 6️⃣ 构建 Android App Debug APK
+      - name: Build Android App Debug APK
         run: ./gradlew :android-app:assembleDebug --stacktrace --no-daemon
 
-      # 7️⃣ 构建 Android Library（AAR）
-      - name: Build Android Library AAR
+      # 7️⃣ 构建 Android Library Debug AAR
+      - name: Build Android Library Debug AAR
         run: ./gradlew :android-library:assembleDebug --stacktrace --no-daemon
 
-      # 8️⃣ 上传 APK 和 AAR
-      - name: Upload APK and AAR artifacts
+      # 8️⃣ 上传 Debug APK 和 AAR
+      - name: Upload Debug artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: FIDOk-Android-build
+          name: FIDOk-Android-Debug
           path: |
             android-app/build/outputs/apk/debug/*.apk
             android-library/build/outputs/aar/*.aar
