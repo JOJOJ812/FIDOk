@@ -1,4 +1,4 @@
-name: Build FIDOk Android Debug
+name: FIDOk Android CI (Dynamic Module Detection)
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
       JAVA_HOME: /opt/hostedtoolcache/jdk/17.0.8/x64
 
     steps:
-      # 1️⃣ Checkout 代码
+      # 1️⃣ Checkout 仓库
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -25,7 +25,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # 3️⃣ 安装 Android SDK
+      # 3️⃣ 安装 Android SDK / NDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
@@ -52,16 +52,29 @@ jobs:
           key: konan-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: konan-
 
-      # 6️⃣ 构建 Android App Debug APK
+      # 6️⃣ 动态检测 Gradle 模块
+      - name: Detect Gradle modules
+        id: detect_modules
+        run: |
+          echo "Available Gradle modules:"
+          ./gradlew projects --console=plain
+          # 提取模块名，以冒号开头
+          modules=$(./gradlew projects --console=plain | grep "^:" | awk '{print $1}' | tr '\n' ' ')
+          echo "Modules detected: $modules"
+          echo "::set-output name=modules::$modules"
+
+      # 7️⃣ 构建 Android App APK（如果存在 android-app 模块）
       - name: Build Android App Debug APK
+        if: contains(steps.detect_modules.outputs.modules, ':android-app')
         run: ./gradlew :android-app:assembleDebug --stacktrace --no-daemon
 
-      # 7️⃣ 构建 Android Library Debug AAR
+      # 8️⃣ 构建 Android Library AAR（如果存在 android-library 模块）
       - name: Build Android Library Debug AAR
+        if: contains(steps.detect_modules.outputs.modules, ':android-library')
         run: ./gradlew :android-library:assembleDebug --stacktrace --no-daemon
 
-      # 8️⃣ 上传 Debug APK 和 AAR
-      - name: Upload Debug artifacts
+      # 9️⃣ 上传构建产物
+      - name: Upload APK/AAR artifacts
         uses: actions/upload-artifact@v4
         with:
           name: FIDOk-Android-Debug
